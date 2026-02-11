@@ -1,28 +1,17 @@
 #!/bin/bash
 
-# Exit on error
-set -e
+# Simple and fast deploy script
+# Only install what's absolutely needed
 
-echo "🚀 Starting deployment..."
+echo "🚀 Building..."
 
-# Install root dependencies
-echo "📦 Installing root dependencies..."
-npm install --prefer-offline --no-audit
+# Install server deps
+cd server && npm install --production && cd ..
 
-# Install server dependencies using --prefix
-echo "📦 Installing server dependencies..."
-npm install --prefix server --prefer-offline --no-audit
-
-# Install client dependencies using --prefix
-echo "📦 Installing client dependencies..."
-npm install --prefix client --prefer-offline --no-audit
-
-# Generate Prisma client
-echo "🔧 Generating Prisma client..."
+# Generate Prisma
 cd server && npx prisma generate && cd ..
 
 # Build client
-echo "🏗️ Building client..."
 cd client && npm run build && cd ..
 
-echo "✅ Deployment ready!"
+echo "✅ Done!"
