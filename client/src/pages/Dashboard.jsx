@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import axios from 'axios'
+import api from '../api'
 
 export default function Dashboard() {
   const { user, logout } = useAuth()
@@ -17,7 +17,7 @@ export default function Dashboard() {
 
   const fetchBoards = async () => {
     try {
-      const { data } = await axios.get('/api/boards')
+      const { data } = await api.get('/boards')
       setBoards(data.boards)
     } catch (err) {
       console.error('Failed to fetch boards:', err)
@@ -29,7 +29,7 @@ export default function Dashboard() {
   const createBoard = async (e) => {
     e.preventDefault()
     try {
-      const { data } = await axios.post('/api/boards', { title: newBoardTitle })
+      const { data } = await api.post('/boards', { title: newBoardTitle })
       setBoards([data.board, ...boards])
       setNewBoardTitle('')
       setShowModal(false)
@@ -45,7 +45,7 @@ export default function Dashboard() {
     if (!confirm('確定要刪除這個看板嗎？')) return
     
     try {
-      await axios.delete(`/api/boards/${boardId}`)
+      await api.delete(`/boards/${boardId}`)
       setBoards(boards.filter(b => b.id !== boardId))
     } catch (err) {
       console.error('Failed to delete board:', err)

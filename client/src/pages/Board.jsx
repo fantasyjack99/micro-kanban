@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../api'
 import { format, isPast, isToday } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 
@@ -20,7 +20,7 @@ export default function Board() {
 
   const fetchBoard = async () => {
     try {
-      const { data } = await axios.get(`/api/boards/${id}`)
+      const { data } = await api.get(`/boards/${id}`)
       setBoard(data.board)
     } catch (err) {
       console.error('Failed to fetch board:', err)
@@ -33,7 +33,7 @@ export default function Board() {
   const addColumn = async (e) => {
     e.preventDefault()
     try {
-      const { data } = await axios.post(`/api/boards/${id}/columns`, {
+      const { data } = await api.post(`/boards/${id}/columns`, {
         title: newColumnTitle
       })
       setBoard({
@@ -70,7 +70,7 @@ export default function Board() {
     if (!card || !targetColumn) return
 
     try {
-      await axios.post('/api/cards/move', {
+      await api.post('/cards/move', {
         cardId: card.id,
         targetColumnId: targetColumn.id,
         newOrder: destination.index
@@ -322,7 +322,7 @@ function CardModal({ card, onClose, onSave }) {
     try {
       if (card?.id) {
         // Update existing card
-        await axios.put(`/api/cards/${card.id}`, {
+        await api.put(`/cards/${card.id}`, {
           title,
           content,
           categoryTag,
@@ -331,7 +331,7 @@ function CardModal({ card, onClose, onSave }) {
         })
       } else {
         // Create new card
-        await axios.post('/api/cards', {
+        await api.post('/cards', {
           title,
           content,
           categoryTag,
@@ -353,7 +353,7 @@ function CardModal({ card, onClose, onSave }) {
     if (!confirm('確定要刪除這張卡片嗎？')) return
 
     try {
-      await axios.delete(`/api/cards/${card.id}`)
+      await api.delete(`/cards/${card.id}`)
       onClose()
     } catch (err) {
       console.error('Failed to delete card:', err)

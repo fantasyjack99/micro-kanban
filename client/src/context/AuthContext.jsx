@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
 
+// Get API URL from environment variable or default to relative path
+const API_URL = import.meta.env.VITE_API_URL || ''
+
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
@@ -13,7 +16,7 @@ export function AuthProvider({ children }) {
       if (token) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
         try {
-          const { data } = await axios.get('/api/auth/me')
+          const { data } = await axios.get(`${API_URL}/api/auth/me`)
           setUser(data.user)
         } catch (err) {
           localStorage.removeItem('token')
@@ -27,7 +30,7 @@ export function AuthProvider({ children }) {
   }, [token])
 
   const login = async (email, password) => {
-    const { data } = await axios.post('/api/auth/login', { email, password })
+    const { data } = await axios.post(`${API_URL}/api/auth/login`, { email, password })
     localStorage.setItem('token', data.token)
     axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
     setToken(data.token)
@@ -36,7 +39,7 @@ export function AuthProvider({ children }) {
   }
 
   const register = async (email, password, name) => {
-    const { data } = await axios.post('/api/auth/register', { email, password, name })
+    const { data } = await axios.post(`${API_URL}/api/auth/register`, { email, password, name })
     localStorage.setItem('token', data.token)
     axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
     setToken(data.token)
