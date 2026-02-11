@@ -9,28 +9,20 @@ echo "🚀 Starting deployment..."
 echo "📦 Installing root dependencies..."
 npm install
 
-# Install server dependencies
+# Install server dependencies using --prefix
 echo "📦 Installing server dependencies..."
-cd server
-npm install
-cd ..
+npm install --prefix server
 
-# Install client dependencies
+# Install client dependencies using --prefix
 echo "📦 Installing client dependencies..."
-cd client
-npm install
-cd ..
+npm install --prefix client
 
 # Generate Prisma client
 echo "🔧 Generating Prisma client..."
-cd server
-npx prisma generate
-cd ..
+cd server && npx prisma generate && cd ..
 
 # Build client
 echo "🏗️ Building client..."
-cd client
-npm run build
-cd ..
+cd client && npm run build && cd ..
 
 echo "✅ Deployment ready!"
