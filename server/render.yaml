@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: micro-kanban
+    env: node
+    buildCommand: npm install && cd server && npm install && npm run prisma:generate && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: micro-kanban-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+    plan: free
+
+databases:
+  - name: micro-kanban-db
+    plan: free
+    postgresVersion: 15

@@ -140,3 +140,77 @@ MIT License
 ---
 
 建立日期: 2026-02-11
+
+---
+
+## 🚀 部署到 Render.com（完全免費）
+
+### 步驟 1：建立 Render 帳號
+
+1. 打開 https://render.com
+2. 用 GitHub 登入
+3. 連接 GitHub 帳號
+
+### 步驟 2：建立 PostgreSQL 資料庫
+
+1. 點擊 **"New +"** → **"PostgreSQL"**
+2. 設定：
+   - **Name:** `micro-kanban-db`
+   - **Plan:** Free（免費）
+   - **Region:** 選擇離你最近的
+3. 點擊 **"Create Database"**
+4. 複製 **External Database URL**（等一下要用）
+
+### 步驟 3：建立 Web Service
+
+1. 點擊 **"New +"** → **"Web Service"**
+2. 選擇 GitHub repository: `fantasyjack99/micro-kanban`
+3. 設定：
+   - **Name:** `micro-kanban`
+   - **Root Directory:** `/`（或留空）
+   - **Build Command:** `npm install && cd server && npm install && npm run prisma:generate && npm run build`
+   - **Start Command:** `npm run start`
+   - **Plan:** Free（免費）
+
+### 步驟 4：設定環境變數
+
+在 Web Service 的 **"Environment Variables"** 頁面，新增：
+
+| Key | Value |
+|-----|-------|
+| `DATABASE_URL` | PostgreSQL 的 External Database URL |
+| `JWT_SECRET` | 一個隨機字串（可以用 `openssl rand -hex 32` 生成） |
+| `NODE_ENV` | `production` |
+
+### 步驟 5：部署
+
+1. 點擊 **"Create Web Service"**
+2. Render 會自動建置並部署
+3. 等待狀態變成 **"Live"**
+
+### 步驟 6：完成 🎉
+
+- 訪問你的專案網址：`https://micro-kanban.onrender.com`
+- 註冊帳號並開始使用！
+
+---
+
+## 🔧 常見問題
+
+### Q: 網站載入很慢？
+A: 免費版 15 分鐘無活動會休眠，首次訪問需要 30-60 秒喚醒。
+
+### Q: 如何升級？
+A: 在 Render Dashboard 選擇你的服務 → Settings → Plan
+
+### Q: 資料會不見嗎？
+A: 免費版不會刪除資料，除非你手動刪除資料庫服務。
+
+---
+
+## 📝 部署完成後
+
+1. 設定自訂網域（可選）
+2. 啟用 HTTPS（自動）
+3. 監控使用量：https://dashboard.render.com
+
