@@ -168,7 +168,7 @@ MIT License
 3. 設定：
    - **Name:** `micro-kanban`
    - **Root Directory:** `/`（或留空）
-   - **Build Command:** `npm install && cd server && npm install && npm run prisma:generate && npm run build`
+   - **Build Command:** `npm install && npm run install:all && npm run build`
    - **Start Command:** `npm run start`
    - **Plan:** Free（免費）
 
