@@ -220,10 +220,36 @@ router.post('/move', auth, async (req, res) => {
         }
       }
 
-      // Update card status and completedAt
+      // Update card status, columnId and completedAt
+      // 如果狀態改變，找到對應的欄位
+      let finalColumnId = targetColumnId
+      if (newStatus !== card.status) {
+        const statusToColumnTitle = {
+          'todo': '待辦',
+          'doing': '執行中',
+          'done': '已完成'
+        }
+        const targetColumnTitle = statusToColumnTitle[newStatus]
+        if (targetColumnTitle) {
+          const targetColumn = await tx.column.findFirst({
+            where: {
+              boardId: card.column.boardId,
+              title: targetColumnTitle
+            }
+          })
+          if (targetColumn) {
+            finalColumnId = targetColumn.id
+          }
+        }
+      }
+
       await tx.card.update({
         where: { id: cardId },
-        data: { status: newStatus, completedAt }
+        data: { 
+          status: newStatus, 
+          completedAt,
+          columnId: finalColumnId
+        }
       });
     });
 
