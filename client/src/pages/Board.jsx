@@ -195,8 +195,11 @@ export default function Board() {
           onSave={() => {
             setShowCardModal(false)
             setEditingCard(null)
-            // 先清空再重新獲取，確保 UI 完全刷新
-            setBoard(null)
+            fetchBoard()
+          }}
+          onDelete={() => {
+            setShowCardModal(false)
+            setEditingCard(null)
             fetchBoard()
           }}
         />
@@ -323,7 +326,7 @@ function Card({ card, onClick }) {
   )
 }
 
-function CardModal({ card, onClose, onSave }) {
+function CardModal({ card, onClose, onSave, onDelete }) {
   const [title, setTitle] = useState(card?.title || '')
   const [content, setContent] = useState(card?.content || '')
   const [categoryTag, setCategoryTag] = useState(card?.categoryTag || '')
@@ -369,7 +372,11 @@ function CardModal({ card, onClose, onSave }) {
 
     try {
       await api.delete(`/cards/${card.id}`)
+      onDelete()
       onClose()
+      // 刪除後刷新看板
+      setBoard(null)
+      fetchBoard()
     } catch (err) {
       console.error('Failed to delete card:', err)
     }

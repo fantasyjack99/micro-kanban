@@ -95,7 +95,7 @@ router.put('/:id', auth, async (req, res) => {
     // Set completedAt when status changes to done
     const completedAt = newStatus === 'done' 
       ? new Date() 
-      : (newStatus === 'done' ? card.completedAt : null)
+      : (card.status === 'done' ? null : card.completedAt)
 
     const updatedCard = await req.prisma.card.update({
       where: { id: req.params.id },
