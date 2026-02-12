@@ -57,37 +57,50 @@ export default function Board() {
     const oldOrder = column.cards.map(c => c.id)
     const newOrder = newCards.map(c => c.id)
 
-    if (JSON.stringify(oldOrder) === JSON.stringify(newOrder)) return
+    // Optimistic update - immediately update UI
+    const newColumns = board.columns.map(col => {
+      if (col.id === columnId) {
+        return { ...col, cards: newCards.map((card, index) => ({ ...card, order: index })) }
+      }
+      return col
+    })
+    setBoard({ ...board, columns: newColumns })
 
-    // Find the card that was moved (first card with different position)
+    // Find the card that was moved
     let movedCard = null
-    for (let i = 0; i < newCards.length; i++) {
-      if (!oldOrder[i] || oldOrder[i] !== newCards[i].id) {
-        movedCard = newCards[i]
+    let targetColumnId = columnId
+    let newIndex = 0
+
+    for (let i = 0; i < newOrder.length; i++) {
+      if (i >= oldOrder.length || oldOrder[i] !== newOrder[i]) {
+        movedCard = newCards.find(c => c.id === newOrder[i])
+        newIndex = i
         break
+      }
+    }
+
+    // Check if card came from another column
+    if (movedCard && !oldOrder.includes(movedCard.id)) {
+      for (const col of board.columns) {
+        if (col.id !== columnId && col.cards.some(c => c.id === movedCard.id)) {
+          targetColumnId = columnId
+          break
+        }
       }
     }
 
     if (!movedCard) return
 
+    // Send API request
     try {
       await api.post('/cards/move', {
         cardId: movedCard.id,
-        targetColumnId: columnId,
-        newOrder: newCards.findIndex(c => c.id === movedCard.id)
+        targetColumnId,
+        newOrder: newIndex
       })
-
-      // Update local state
-      const newColumns = board.columns.map(col => {
-        if (col.id === columnId) {
-          return { ...col, cards: newCards }
-        }
-        return col
-      })
-      setBoard({ ...board, columns: newColumns })
     } catch (err) {
       console.error('Failed to move card:', err)
-      fetchBoard()
+      fetchBoard() // Revert on error
     }
   }
 
@@ -191,7 +204,7 @@ export default function Board() {
               onCardMove={onCardMove}
             />
           ))}
-          
+
           {/* Add Column Button */}
           <div className="w-80 flex-shrink-0">
             <button
@@ -323,6 +336,20 @@ function Card({ card, onClick }) {
   const isDone = card.status === 'done'
   const cardBgColor = card.color || '#FFFFFF'
 
+  // 根據背景色亮度調整文字顏色
+  const getTextColor = (bgColor) => {
+    const hex = bgColor.replace('#', '')
+    const r = parseInt(hex.substr(0, 2), 16)
+    const g = parseInt(hex.substr(2, 2), 16)
+    const b = parseInt(hex.substr(4, 2), 16)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000
+    return brightness > 128 ? '#1F2937' : '#F3F4F6' // 深灰 vs 淺灰
+  }
+
+  const textColor = getTextColor(cardBgColor)
+  const labelBg = textColor === '#1F2937' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)'
+  const metaTextColor = textColor === '#1F2937' ? '#6B7280' : '#D1D5DB'
+
   return (
     <div
       onClick={onClick}
@@ -332,30 +359,33 @@ function Card({ card, onClick }) {
       style={{ backgroundColor: cardBgColor }}
     >
       {card.categoryTag && (
-        <span className="inline-block px-2 py-0.5 bg-white bg-opacity-60 rounded text-xs text-gray-700 mb-2">
+        <span
+          className="inline-block px-2 py-0.5 rounded text-xs mb-2 font-medium"
+          style={{ backgroundColor: labelBg, color: textColor }}
+        >
           {card.categoryTag}
         </span>
       )}
       
-      <p className={`font-medium ${isDone ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+      <p className={`font-medium ${isDone ? 'line-through opacity-70' : ''}`} style={{ color: textColor }}>
         {card.title}
       </p>
       
       {card.content && (
-        <p className={`text-sm mt-1 line-clamp-2 ${isDone ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+        <p className={`text-sm mt-1 line-clamp-2 ${isDone ? 'line-through opacity-60' : ''}`} style={{ color: metaTextColor }}>
           {card.content}
         </p>
       )}
-      
+
       {/* 建立時間 */}
-      <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+      <div className="flex items-center gap-1 mt-2 text-xs" style={{ color: metaTextColor }}>
         <span>建立:</span>
         <span>{format(new Date(card.createdAt), 'MM/dd HH:mm', { locale: zhTW })}</span>
       </div>
       
       {/* 完成時間 */}
       {isDone && card.completedAt && (
-        <div className="flex items-center gap-1 mt-1 text-xs text-green-600">
+        <div className="flex items-center gap-1 mt-1 text-xs" style={{ color: '#10B981' }}>
           <span>完成:</span>
           <span>{format(new Date(card.completedAt), 'MM/dd HH:mm', { locale: zhTW })}</span>
         </div>
@@ -363,12 +393,12 @@ function Card({ card, onClick }) {
       
       {/* 到期日 */}
       {card.dueDate && !isDone && (
-        <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+        <div className="flex items-center gap-1 mt-1 text-xs" style={{ color: isOverdue ? '#EF4444' : metaTextColor }}>
           <span>📅</span>
-          <span className={isOverdue ? 'text-red-500 font-medium' : ''}>
+          <span className={isOverdue ? 'font-medium' : ''}>
             {format(new Date(card.dueDate), 'MM/dd', { locale: zhTW })}
           </span>
-          {isOverdue && <span className="text-red-500">⚠️</span>}
+          {isOverdue && <span>⚠️</span>}
         </div>
       )}
     </div>
@@ -436,7 +466,7 @@ function CardModal({ card, onClose, onSave }) {
         <h3 className="text-lg font-semibold mb-4">
           {card?.id ? '編輯卡片' : '新增卡片'}
         </h3>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-gray-700 font-medium mb-2">標題 *</label>
@@ -506,41 +536,15 @@ function CardModal({ card, onClose, onSave }) {
           {card?.id && (
             <div>
               <label className="block text-gray-700 font-medium mb-2">狀態</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="todo"
-                    checked={status === 'todo'}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span>待辦</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="doing"
-                    checked={status === 'doing'}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-4 h-4 text-yellow-600"
-                  />
-                  <span>進行中</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="done"
-                    checked={status === 'done'}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-4 h-4 text-green-600"
-                  />
-                  <span>完成</span>
-                </label>
-              </div>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="todo">待辦</option>
+                <option value="doing">進行中</option>
+                <option value="done">完成</option>
+              </select>
             </div>
           )}
 
