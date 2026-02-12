@@ -49,45 +49,59 @@ export default function Board() {
   }
 
   const onCardMove = async (columnId, newCards) => {
-    // Find the column
     const column = board.columns.find(c => c.id === columnId)
     if (!column) return
 
-    // Check if order changed
-    const oldOrder = column.cards.map(c => c.id)
-    const newOrder = newCards.map(c => c.id)
+    // Find the moved card by comparing old and new cards
+    const oldCardIds = column.cards.map(c => c.id)
+    const newCardIds = newCards.map(c => c.id)
 
-    // Optimistic update - immediately update UI
-    const newColumns = board.columns.map(col => {
-      if (col.id === columnId) {
-        return { ...col, cards: newCards.map((card, index) => ({ ...card, order: index })) }
-      }
-      return col
-    })
-    setBoard({ ...board, columns: newColumns })
-
-    // Find the card that was moved
+    // Find which card was added to this column
     let movedCard = null
-    let targetColumnId = columnId
-    let newIndex = 0
-
-    for (let i = 0; i < newOrder.length; i++) {
-      if (i >= oldOrder.length || oldOrder[i] !== newOrder[i]) {
-        movedCard = newCards.find(c => c.id === newOrder[i])
-        newIndex = i
+    let sourceColumnId = null
+    for (const col of board.columns) {
+      if (col.id === columnId) continue
+      const card = col.cards.find(c => !newCardIds.includes(c.id))
+      if (card) {
+        movedCard = card
+        sourceColumnId = col.id
         break
       }
     }
 
-    // Check if card came from another column
-    if (movedCard && !oldOrder.includes(movedCard.id)) {
+    // Check if any card left the source column (for cross-column moves)
+    if (!movedCard) {
       for (const col of board.columns) {
-        if (col.id !== columnId && col.cards.some(c => c.id === movedCard.id)) {
-          targetColumnId = columnId
-          break
+        if (col.id === columnId) continue
+        if (col.cards.length > newCards.length + (sourceColumnId ? 1 : 0)) {
+          // Card moved FROM this column
+          const cardId = col.cards.find(c => !newCardIds.includes(c.id))
+          if (cardId) {
+            movedCard = { ...cardId, columnId }
+            sourceColumnId = col.id
+            break
+          }
         }
       }
     }
+
+    // Optimistic update - immediately update all columns
+    const newColumns = board.columns.map(col => {
+      if (col.id === columnId) {
+        return { 
+          ...col, 
+          cards: newCards.map((card, index) => ({ ...card, columnId, order: index }))
+        }
+      }
+      if (col.id === sourceColumnId && movedCard) {
+        return {
+          ...col,
+          cards: col.cards.filter(c => c.id !== movedCard.id).map((card, index) => ({ ...card, order: index }))
+        }
+      }
+      return col
+    })
+    setBoard({ ...board, columns: newColumns })
 
     if (!movedCard) return
 
@@ -95,8 +109,8 @@ export default function Board() {
     try {
       await api.post('/cards/move', {
         cardId: movedCard.id,
-        targetColumnId,
-        newOrder: newIndex
+        targetColumnId: columnId,
+        newOrder: newCards.findIndex(c => c.id === movedCard.id)
       })
     } catch (err) {
       console.error('Failed to move card:', err)
