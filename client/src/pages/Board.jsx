@@ -294,7 +294,7 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
         <ReactSortable
           list={column.cards}
           setList={(newCards) => onCardMove(column.id, newCards)}
-          group="cards"
+          group={{ name: 'cards', pull: 'true', put: 'true' }}
           itemKey="id"
           className="space-y-3 min-h-[100px]"
           ghostClass="opacity-50"
