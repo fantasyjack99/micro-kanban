@@ -40,107 +40,80 @@ export default function Board() {
     const targetColumn = board.columns.find(c => c.id === columnId)
     const targetStatus = targetColumn ? columnStatusMap[targetColumn.title] : null
 
-    // 找出移動的卡片
+    // 找出來源欄位中少了哪張卡片（被移走的）
     let movedCard = null
     let sourceColumnId = null
     for (const col of board.columns) {
       if (col.id === columnId) continue
-      const card = col.cards.find(c => !newCards.find(nc => nc.id === c.id))
-      if (card) {
-        movedCard = card
+      const oldCardIds = col.cards.map(c => c.id)
+      const newCardIds = newCards.map(c => c.id)
+      const missingCardId = oldCardIds.find(id => !newCardIds.includes(id))
+      if (missingCardId) {
+        movedCard = col.cards.find(c => c.id === missingCardId)
         sourceColumnId = col.id
         break
       }
     }
 
-    // 從來源欄位移除卡片
+    // 如果沒有找到移動的卡片，可能是同欄位內排序
+    if (!movedCard) {
+      const sourceColumn = board.columns.find(c => c.id === columnId)
+      if (sourceColumn) {
+        const oldCardIds = sourceColumn.cards.map(c => c.id)
+        const newCardIds = newCards.map(c => c.id)
+        // 檢查是否有順序變化
+        const hasReorder = JSON.stringify(oldCardIds) !== JSON.stringify(newCardIds)
+        if (hasReorder) {
+          // 同欄位排序，更新本地狀態
+          const newColumns = board.columns.map(col => {
+            if (col.id === columnId) {
+              return { ...col, cards: newCards.map((c, i) => ({ ...c, order: i })) }
+            }
+            return col
+          })
+          setBoard({ ...board, columns: newColumns })
+          return
+        }
+      }
+      return // 沒有變化
+    }
+
+    // 立即更新 UI - 從來源移除，加入目標
     const newColumns = board.columns.map(col => {
       if (col.id === columnId) {
-        return {
-          ...col,
-          cards: newCards.map((card, index) => ({
-            ...card,
+        // 目標欄位：加入移動過來的卡片
+        return { 
+          ...col, 
+          cards: newCards.map((card, index) => ({ 
+            ...card, 
             columnId,
             order: index,
             status: targetStatus || card.status
           }))
         }
       }
-      if (col.id === sourceColumnId && movedCard) {
+      if (col.id === sourceColumnId) {
+        // 來源欄位：移除被移出的卡片
         return {
           ...col,
-          cards: col.cards.filter(c => c.id !== movedCard.id).map((card, index) => ({ ...card, order: index }))
+          cards: col.cards.filter(c => c.id !== movedCard.id).map((c, i) => ({ ...c, order: i }))
         }
       }
       return col
     })
     setBoard({ ...board, columns: newColumns })
 
-    if (!movedCard || !targetStatus) return
-
-    // 發送 API 請求，同時更新狀態
+    // 發送 API 請求
     try {
       await api.post('/cards/move', {
         cardId: movedCard.id,
         targetColumnId,
         newOrder: newCards.findIndex(c => c.id === movedCard.id),
-        status: targetStatus  // 新增狀態參數
+        status: targetStatus
       })
     } catch (err) {
       console.error('Failed to move card:', err)
       fetchBoard()
-    }
-  }
-
-  const onDragEnd = async (result) => {
-    if (!result.destination) return
-
-    const { source, destination, draggableId } = result
-
-    // Find the card
-    let card = null
-    let sourceColumn = null
-    let targetColumn = null
-
-    for (const col of board.columns) {
-      if (col.id === source.droppableId) {
-        sourceColumn = col
-        card = col.cards.find(c => c.id === draggableId)
-      }
-      if (col.id === destination.droppableId) {
-        targetColumn = col
-      }
-    }
-
-    if (!card || !targetColumn) return
-
-    try {
-      await api.post('/cards/move', {
-        cardId: card.id,
-        targetColumnId: targetColumn.id,
-        newOrder: destination.index
-      })
-
-      // Optimistic update
-      const newColumns = board.columns.map(col => {
-        if (col.id === source.droppableId) {
-          return {
-            ...col,
-            cards: col.cards.filter(c => c.id !== draggableId)
-          }
-        }
-        if (col.id === destination.droppableId) {
-          const newCards = [...col.cards]
-          newCards.splice(destination.index, 0, { ...card, columnId: col.id })
-          return { ...col, cards: newCards }
-        }
-        return col
-      })
-
-      setBoard({ ...board, columns: newColumns })
-    } catch (err) {
-      console.error('Failed to move card:', err)
-      fetchBoard() // Revert
     }
   }
 
@@ -237,8 +210,6 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
           className="space-y-3 min-h-[100px]"
           ghostClass="opacity-50"
           dragClass="shadow-xl"
-          pull="clone"
-          put="true"
         >
           {column.cards.map((card) => (
             <Card key={card.id} card={card} onClick={() => onCardClick(card)} />

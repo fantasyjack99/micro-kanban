@@ -133,8 +133,10 @@ router.post('/move', auth, async (req, res) => {
     }
 
     const sourceColumnId = card.columnId;
-    const newStatus = status || (card.status === 'done' ? 'done' : card.status)
-    const completedAt = newStatus === 'done' ? new Date() : (newStatus === 'done' ? card.completedAt : null)
+    const newStatus = status || card.status
+    const completedAt = newStatus === 'done' 
+      ? new Date() 
+      : (card.status === 'done' ? null : card.completedAt)
 
     // Use transaction for atomicity
     await req.prisma.$transaction(async (tx) => {
