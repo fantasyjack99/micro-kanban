@@ -67,9 +67,9 @@ router.post('/', [
         userId: req.user.userId,
         columns: {
           create: [
-            { title: '待辦 (To-do)', order: 0 },
-            { title: '執行中 (Doing)', order: 1 },
-            { title: '已完成 (Done)', order: 2 }
+            { title: '待辦', order: 0 },
+            { title: '進行中', order: 1 },
+            { title: '已完成', order: 2 }
           ]
         }
       },

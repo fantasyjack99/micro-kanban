@@ -12,9 +12,6 @@ export default function Board() {
   const [loading, setLoading] = useState(true)
   const [showCardModal, setShowCardModal] = useState(false)
   const [editingCard, setEditingCard] = useState(null)
-  const [showColumnModal, setShowColumnModal] = useState(false)
-  const [newColumnTitle, setNewColumnTitle] = useState('')
-
   useEffect(() => {
     fetchBoard()
   }, [id])
@@ -31,37 +28,24 @@ export default function Board() {
     }
   }
 
-  const addColumn = async (e) => {
-    e.preventDefault()
-    try {
-      const { data } = await api.post(`/boards/${id}/columns`, {
-        title: newColumnTitle
-      })
-      setBoard({
-        ...board,
-        columns: [...board.columns, data.column].sort((a, b) => a.order - b.order)
-      })
-      setNewColumnTitle('')
-      setShowColumnModal(false)
-    } catch (err) {
-      console.error('Failed to add column:', err)
-    }
-  }
-
   const onCardMove = async (columnId, newCards) => {
-    const column = board.columns.find(c => c.id === columnId)
-    if (!column) return
+    // 欄位對應狀態
+    const columnStatusMap = {
+      '待辦': 'todo',
+      '進行中': 'doing',
+      '已完成': 'done'
+    }
 
-    // Find the moved card by comparing old and new cards
-    const oldCardIds = column.cards.map(c => c.id)
-    const newCardIds = newCards.map(c => c.id)
+    // 找出目標欄位的狀態
+    const targetColumn = board.columns.find(c => c.id === columnId)
+    const targetStatus = targetColumn ? columnStatusMap[targetColumn.title] : null
 
-    // Find which card was added to this column
+    // 找出移動的卡片
     let movedCard = null
     let sourceColumnId = null
     for (const col of board.columns) {
       if (col.id === columnId) continue
-      const card = col.cards.find(c => !newCardIds.includes(c.id))
+      const card = col.cards.find(c => !newCards.find(nc => nc.id === c.id))
       if (card) {
         movedCard = card
         sourceColumnId = col.id
@@ -69,28 +53,17 @@ export default function Board() {
       }
     }
 
-    // Check if any card left the source column (for cross-column moves)
-    if (!movedCard) {
-      for (const col of board.columns) {
-        if (col.id === columnId) continue
-        if (col.cards.length > newCards.length + (sourceColumnId ? 1 : 0)) {
-          // Card moved FROM this column
-          const cardId = col.cards.find(c => !newCardIds.includes(c.id))
-          if (cardId) {
-            movedCard = { ...cardId, columnId }
-            sourceColumnId = col.id
-            break
-          }
-        }
-      }
-    }
-
-    // Optimistic update - immediately update all columns
+    // 從來源欄位移除卡片
     const newColumns = board.columns.map(col => {
       if (col.id === columnId) {
-        return { 
-          ...col, 
-          cards: newCards.map((card, index) => ({ ...card, columnId, order: index }))
+        return {
+          ...col,
+          cards: newCards.map((card, index) => ({
+            ...card,
+            columnId,
+            order: index,
+            status: targetStatus || card.status
+          }))
         }
       }
       if (col.id === sourceColumnId && movedCard) {
@@ -103,18 +76,19 @@ export default function Board() {
     })
     setBoard({ ...board, columns: newColumns })
 
-    if (!movedCard) return
+    if (!movedCard || !targetStatus) return
 
-    // Send API request
+    // 發送 API 請求，同時更新狀態
     try {
       await api.post('/cards/move', {
         cardId: movedCard.id,
-        targetColumnId: columnId,
-        newOrder: newCards.findIndex(c => c.id === movedCard.id)
+        targetColumnId,
+        newOrder: newCards.findIndex(c => c.id === movedCard.id),
+        status: targetStatus  // 新增狀態參數
       })
     } catch (err) {
       console.error('Failed to move card:', err)
-      fetchBoard() // Revert on error
+      fetchBoard()
     }
   }
 
@@ -218,16 +192,7 @@ export default function Board() {
               onCardMove={onCardMove}
             />
           ))}
-
-          {/* Add Column Button */}
-          <div className="w-80 flex-shrink-0">
-            <button
-              onClick={() => setShowColumnModal(true)}
-              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-gray-400 hover:text-gray-600 transition"
-            >
-              + 新增列表
-            </button>
-          </div>
+        </div>
         </div>
       </div>
 
@@ -246,52 +211,13 @@ export default function Board() {
           }}
         />
       )}
-
-      {/* Add Column Modal */}
-      {showColumnModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">新增列表</h3>
-            <form onSubmit={addColumn}>
-              <input
-                type="text"
-                value={newColumnTitle}
-                onChange={(e) => setNewColumnTitle(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500"
-                placeholder="列表名稱"
-                autoFocus
-                required
-              />
-              <div className="flex gap-4 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowColumnModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  新增
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
 function Column({ column, onCardClick, onAddCard, onCardMove }) {
-  const [showMenu, setShowMenu] = useState(false)
-
-  const isOverdue = (card) => {
-    if (!card.dueDate || card.status === 'done') return false
-    return isPast(new Date(card.dueDate))
-  }
+  // 固定欄位名稱
+  const isFixedColumn = ['待辦', '進行中', '已完成'].includes(column.title)
 
   return (
     <div className="w-80 flex-shrink-0">
@@ -301,21 +227,6 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
             {column.title}
             <span className="ml-2 text-gray-500 text-sm">({column.cards.length})</span>
           </h3>
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ⋮
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-6 bg-white rounded-lg shadow-lg py-1 z-10">
-                <button className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                  刪除列表
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
         <ReactSortable
@@ -334,12 +245,14 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
           ))}
         </ReactSortable>
 
-        <button
-          onClick={onAddCard}
-          className="w-full mt-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-300 rounded-lg transition text-left px-2"
-        >
-          + 新增卡片
-        </button>
+        {!isFixedColumn && (
+          <button
+            onClick={onAddCard}
+            className="w-full mt-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-300 rounded-lg transition text-left px-2"
+          >
+            + 新增卡片
+          </button>
+        )}
       </div>
     </div>
   )

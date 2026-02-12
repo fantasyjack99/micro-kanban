@@ -118,7 +118,7 @@ router.delete('/:id', auth, async (req, res) => {
 
 // Move card (drag-drop)
 router.post('/move', auth, async (req, res) => {
-  const { cardId, targetColumnId, newOrder } = req.body;
+  const { cardId, targetColumnId, newOrder, status } = req.body;
 
   try {
     const card = await req.prisma.card.findFirst({
@@ -133,6 +133,8 @@ router.post('/move', auth, async (req, res) => {
     }
 
     const sourceColumnId = card.columnId;
+    const newStatus = status || (card.status === 'done' ? 'done' : card.status)
+    const completedAt = newStatus === 'done' ? new Date() : (newStatus === 'done' ? card.completedAt : null)
 
     // Use transaction for atomicity
     await req.prisma.$transaction(async (tx) => {
@@ -189,6 +191,12 @@ router.post('/move', auth, async (req, res) => {
           });
         }
       }
+
+      // Update card status and completedAt
+      await tx.card.update({
+        where: { id: cardId },
+        data: { status: newStatus, completedAt }
+      });
     });
 
     // Fetch updated card
