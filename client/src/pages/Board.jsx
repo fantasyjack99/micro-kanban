@@ -180,6 +180,8 @@ export default function Board() {
           onSave={() => {
             setShowCardModal(false)
             setEditingCard(null)
+            // 先清空再重新獲取，確保 UI 完全刷新
+            setBoard(null)
             fetchBoard()
           }}
         />
