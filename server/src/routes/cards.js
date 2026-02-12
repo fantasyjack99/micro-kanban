@@ -67,6 +67,11 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Card not found' });
     }
 
+    // Set completedAt when status changes to done
+    const completedAt = req.body.status === 'done' 
+      ? new Date() 
+      : (card.status === 'done' ? card.completedAt : null);
+
     const updatedCard = await req.prisma.card.update({
       where: { id: req.params.id },
       data: {
@@ -75,7 +80,8 @@ router.put('/:id', auth, async (req, res) => {
         categoryTag: req.body.categoryTag,
         color: req.body.color,
         status: req.body.status,
-        dueDate: req.body.dueDate
+        dueDate: req.body.dueDate,
+        completedAt
       },
       include: { column: true }
     });

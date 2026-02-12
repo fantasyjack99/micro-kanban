@@ -318,13 +318,14 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
 
 function Card({ card, onClick }) {
   const isOverdue = card.dueDate && card.status !== 'done' && isPast(new Date(card.dueDate))
+  const isDone = card.status === 'done'
 
   return (
     <div
       onClick={onClick}
       className={`bg-white rounded-lg p-3 shadow cursor-pointer hover:shadow-md transition ${
         isOverdue ? 'border-l-4 border-red-500' : ''
-      }`}
+      } ${isDone ? 'opacity-75' : ''}`}
     >
       {card.color && (
         <div
@@ -339,16 +340,33 @@ function Card({ card, onClick }) {
         </span>
       )}
       
-      <p className="text-gray-800 font-medium">{card.title}</p>
+      <p className={`text-gray-800 font-medium ${isDone ? 'line-through text-gray-400' : ''}`}>
+        {card.title}
+      </p>
       
       {card.content && (
-        <p className="text-gray-500 text-sm mt-1 line-clamp-2">
+        <p className={`text-gray-500 text-sm mt-1 line-clamp-2 ${isDone ? 'line-through' : ''}`}>
           {card.content}
         </p>
       )}
       
-      {card.dueDate && (
-        <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+      {/* 建立時間 */}
+      <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+        <span>建立:</span>
+        <span>{format(new Date(card.createdAt), 'MM/dd HH:mm', { locale: zhTW })}</span>
+      </div>
+      
+      {/* 完成時間 */}
+      {isDone && card.completedAt && (
+        <div className="flex items-center gap-1 mt-1 text-xs text-green-600">
+          <span>完成:</span>
+          <span>{format(new Date(card.completedAt), 'MM/dd HH:mm', { locale: zhTW })}</span>
+        </div>
+      )}
+      
+      {/* 到期日 */}
+      {card.dueDate && !isDone && (
+        <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
           <span>📅</span>
           <span className={isOverdue ? 'text-red-500 font-medium' : ''}>
             {format(new Date(card.dueDate), 'MM/dd', { locale: zhTW })}
@@ -366,6 +384,7 @@ function CardModal({ card, onClose, onSave }) {
   const [categoryTag, setCategoryTag] = useState(card?.categoryTag || '')
   const [color, setColor] = useState(card?.color || '#3B82F6')
   const [dueDate, setDueDate] = useState(card?.dueDate ? card.dueDate.split('T')[0] : '')
+  const [status, setStatus] = useState(card?.status || 'todo')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -380,6 +399,7 @@ function CardModal({ card, onClose, onSave }) {
           content,
           categoryTag,
           color,
+          status,
           dueDate: dueDate || null
         })
       } else {
@@ -481,6 +501,48 @@ function CardModal({ card, onClose, onSave }) {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* 狀態選擇 */}
+          {card?.id && (
+            <div>
+              <label className="block text-gray-700 font-medium mb-2">狀態</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="todo"
+                    checked={status === 'todo'}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span>待辦</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="doing"
+                    checked={status === 'doing'}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-4 h-4 text-yellow-600"
+                  />
+                  <span>進行中</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="done"
+                    checked={status === 'done'}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-4 h-4 text-green-600"
+                  />
+                  <span>完成</span>
+                </label>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-4 justify-between pt-4">
             {card?.id && (
