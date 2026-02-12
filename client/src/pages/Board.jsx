@@ -348,7 +348,16 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
 function Card({ card, onClick }) {
   const isOverdue = card.dueDate && card.status !== 'done' && isPast(new Date(card.dueDate))
   const isDone = card.status === 'done'
-  const cardBgColor = card.color || '#FFFFFF'
+
+  // 分類標籤對應底色
+  const labelColors = {
+    '一般': '#10B981',  // 綠色
+    '重要': '#F59E0B',  // 橘色
+    '緊急': '#EF4444'   // 紅色
+  }
+  const cardBgColor = card.categoryTag && labelColors[card.categoryTag] 
+    ? labelColors[card.categoryTag] 
+    : '#FFFFFF'
 
   // 根據背景色亮度調整文字顏色
   const getTextColor = (bgColor) => {
@@ -357,12 +366,13 @@ function Card({ card, onClick }) {
     const g = parseInt(hex.substr(2, 2), 16)
     const b = parseInt(hex.substr(4, 2), 16)
     const brightness = (r * 299 + g * 587 + b * 114) / 1000
-    return brightness > 128 ? '#1F2937' : '#F3F4F6' // 深灰 vs 淺灰
+    return brightness > 128 ? '#1F2937' : '#F3F4F6'
   }
 
   const textColor = getTextColor(cardBgColor)
-  const labelBg = textColor === '#1F2937' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)'
+  const labelBg = textColor === '#1F2937' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.25)'
   const metaTextColor = textColor === '#1F2937' ? '#6B7280' : '#D1D5DB'
+  const statusColor = isDone ? '#10B981' : (isOverdue ? '#EF4444' : metaTextColor)
 
   return (
     <div
@@ -391,26 +401,31 @@ function Card({ card, onClick }) {
         </p>
       )}
 
-      {/* 建立時間 */}
-      <div className="flex items-center gap-1 mt-2 text-xs" style={{ color: metaTextColor }}>
-        <span>建立:</span>
-        <span>{format(new Date(card.createdAt), 'MM/dd HH:mm', { locale: zhTW })}</span>
+      {/* 狀態標籤 */}
+      <div className="flex items-center gap-2 mt-2">
+        <span 
+          className="text-xs px-2 py-0.5 rounded font-medium"
+          style={{ 
+            backgroundColor: labelBg, 
+            color: textColor,
+            textDecoration: isDone ? 'line-through' : 'none'
+          }}
+        >
+          {isDone ? '已完成' : (card.status === 'doing' ? '進行中' : '待辦')}
+        </span>
       </div>
       
-      {/* 完成時間 */}
-      {isDone && card.completedAt && (
-        <div className="flex items-center gap-1 mt-1 text-xs" style={{ color: '#10B981' }}>
-          <span>完成:</span>
-          <span>{format(new Date(card.completedAt), 'MM/dd HH:mm', { locale: zhTW })}</span>
-        </div>
-      )}
+      {/* 建立時間 */}
+      <div className="flex items-center gap-1 mt-2 text-xs" style={{ color: metaTextColor }}>
+        <span>{format(new Date(card.createdAt), 'MM/dd HH:mm')}</span>
+      </div>
       
       {/* 到期日 */}
       {card.dueDate && !isDone && (
         <div className="flex items-center gap-1 mt-1 text-xs" style={{ color: isOverdue ? '#EF4444' : metaTextColor }}>
           <span>📅</span>
           <span className={isOverdue ? 'font-medium' : ''}>
-            {format(new Date(card.dueDate), 'MM/dd', { locale: zhTW })}
+            {format(new Date(card.dueDate), 'MM/dd')}
           </span>
           {isOverdue && <span>⚠️</span>}
         </div>
@@ -423,7 +438,6 @@ function CardModal({ card, onClose, onSave }) {
   const [title, setTitle] = useState(card?.title || '')
   const [content, setContent] = useState(card?.content || '')
   const [categoryTag, setCategoryTag] = useState(card?.categoryTag || '')
-  const [color, setColor] = useState(card?.color || '#3B82F6')
   const [dueDate, setDueDate] = useState(card?.dueDate ? card.dueDate.split('T')[0] : '')
   const [status, setStatus] = useState(card?.status || 'todo')
   const [loading, setLoading] = useState(false)
@@ -439,7 +453,6 @@ function CardModal({ card, onClose, onSave }) {
           title,
           content,
           categoryTag,
-          color,
           status,
           dueDate: dueDate || null
         })
@@ -449,7 +462,6 @@ function CardModal({ card, onClose, onSave }) {
           title,
           content,
           categoryTag,
-          color,
           columnId: card.columnId,
           dueDate: dueDate || null
         })
@@ -521,29 +533,14 @@ function CardModal({ card, onClose, onSave }) {
             </div>
 
             <div>
-              <label className="block text-gray-700 font-medium mb-2">顏色</label>
-              <div className="flex gap-2">
-                {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#FFFFFF'].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className={`w-8 h-8 rounded-full ${color === c ? 'ring-2 ring-offset-2 ring-gray-400' : ''} ${c === '#FFFFFF' ? 'border border-gray-300' : ''}`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
+              <label className="block text-gray-700 font-medium mb-2">到期日</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">到期日</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
           </div>
 
           {/* 狀態選擇 */}
