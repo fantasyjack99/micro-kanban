@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { ReactSortable } from 'react-sortablejs'
 import api from '../api'
 import { format, isPast, isToday } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
@@ -44,6 +45,49 @@ export default function Board() {
       setShowColumnModal(false)
     } catch (err) {
       console.error('Failed to add column:', err)
+    }
+  }
+
+  const onCardMove = async (columnId, newCards) => {
+    // Find the column
+    const column = board.columns.find(c => c.id === columnId)
+    if (!column) return
+
+    // Check if order changed
+    const oldOrder = column.cards.map(c => c.id)
+    const newOrder = newCards.map(c => c.id)
+
+    if (JSON.stringify(oldOrder) === JSON.stringify(newOrder)) return
+
+    // Find the card that was moved (first card with different position)
+    let movedCard = null
+    for (let i = 0; i < newCards.length; i++) {
+      if (!oldOrder[i] || oldOrder[i] !== newCards[i].id) {
+        movedCard = newCards[i]
+        break
+      }
+    }
+
+    if (!movedCard) return
+
+    try {
+      await api.post('/cards/move', {
+        cardId: movedCard.id,
+        targetColumnId: columnId,
+        newOrder: newCards.findIndex(c => c.id === movedCard.id)
+      })
+
+      // Update local state
+      const newColumns = board.columns.map(col => {
+        if (col.id === columnId) {
+          return { ...col, cards: newCards }
+        }
+        return col
+      })
+      setBoard({ ...board, columns: newColumns })
+    } catch (err) {
+      console.error('Failed to move card:', err)
+      fetchBoard()
     }
   }
 
@@ -144,6 +188,7 @@ export default function Board() {
                 setEditingCard({ columnId: column.id })
                 setShowCardModal(true)
               }}
+              onCardMove={onCardMove}
             />
           ))}
           
@@ -213,7 +258,7 @@ export default function Board() {
   )
 }
 
-function Column({ column, onCardClick, onAddCard }) {
+function Column({ column, onCardClick, onAddCard, onCardMove }) {
   const [showMenu, setShowMenu] = useState(false)
 
   const isOverdue = (card) => {
@@ -246,11 +291,19 @@ function Column({ column, onCardClick, onAddCard }) {
           </div>
         </div>
 
-        <div className="space-y-3 min-h-[100px]">
+        <ReactSortable
+          list={column.cards}
+          setList={(newCards) => onCardMove(column.id, newCards)}
+          group="cards"
+          itemKey="id"
+          className="space-y-3 min-h-[100px]"
+          ghostClass="opacity-50"
+          dragClass="shadow-xl"
+        >
           {column.cards.map((card) => (
             <Card key={card.id} card={card} onClick={() => onCardClick(card)} />
           ))}
-        </div>
+        </ReactSortable>
 
         <button
           onClick={onAddCard}
