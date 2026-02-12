@@ -32,7 +32,7 @@ export default function Board() {
     // 欄位對應狀態
     const columnStatusMap = {
       '待辦': 'todo',
-      '進行中': 'doing',
+      '執行中': 'doing',
       '已完成': 'done'
     }
 
@@ -190,7 +190,7 @@ export default function Board() {
 
 function Column({ column, onCardClick, onAddCard, onCardMove }) {
   // 固定欄位名稱
-  const isFixedColumn = ['待辦', '進行中', '已完成'].includes(column.title)
+  const isFixedColumn = ['待辦', '執行中', '已完成'].includes(column.title)
 
   return (
     <div className="w-80 flex-shrink-0">
@@ -295,7 +295,7 @@ function Card({ card, onClick }) {
             textDecoration: isDone ? 'line-through' : 'none'
           }}
         >
-          {isDone ? '已完成' : (card.status === 'doing' ? '進行中' : '待辦')}
+          {isDone ? '已完成' : (card.status === 'doing' ? '執行中' : '待辦')}
         </span>
       </div>
       
@@ -437,8 +437,8 @@ function CardModal({ card, onClose, onSave }) {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="todo">待辦</option>
-                <option value="doing">進行中</option>
-                <option value="done">完成</option>
+                <option value="doing">執行中</option>
+                <option value="done">已完成</option>
               </select>
             </div>
           )}

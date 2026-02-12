@@ -68,7 +68,7 @@ router.post('/', [
         columns: {
           create: [
             { title: '待辦', order: 0 },
-            { title: '進行中', order: 1 },
+            { title: '執行中', order: 1 },
             { title: '已完成', order: 2 }
           ]
         }
