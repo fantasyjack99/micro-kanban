@@ -29,11 +29,13 @@ export default function Board() {
   }
 
   const onCardMove = async (columnId, newCards) => {
-    // 欄位對應狀態
+    // 欄位對應狀態 (支援多種寫法)
     const columnStatusMap = {
       '待辦': 'todo',
       '執行中': 'doing',
-      '已完成': 'done'
+      '進行中': 'doing',  // 支援舊稱呼
+      '已完成': 'done',
+      '完成': 'done'      // 支援舊稱呼
     }
 
     // 找出目標欄位的狀態
@@ -158,13 +160,26 @@ export default function Board() {
                 setEditingCard(card)
                 setShowCardModal(true)
               }}
-              onAddCard={() => {
-                setEditingCard({ columnId: column.id })
-                setShowCardModal(true)
-              }}
               onCardMove={onCardMove}
             />
           ))}
+          
+          {/* 新增卡片按鈕 - 固定三欄位所以直接指定到待辦欄位 */}
+          <div className="w-80 flex-shrink-0">
+            <button
+              onClick={() => {
+                const todoColumn = board.columns.find(c => 
+                  ['待辦', 'todo'].includes(c.title) || 
+                  c.cards.some(card => card.status === 'todo')
+                )
+                setEditingCard({ columnId: todoColumn?.id || board.columns[0].id })
+                setShowCardModal(true)
+              }}
+              className="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium"
+            >
+              + 新增卡片
+            </button>
+          </div>
         </div>
         </div>
       </div>
@@ -190,10 +205,7 @@ export default function Board() {
   )
 }
 
-function Column({ column, onCardClick, onAddCard, onCardMove }) {
-  // 固定欄位名稱
-  const isFixedColumn = ['待辦', '執行中', '已完成'].includes(column.title)
-
+function Column({ column, onCardClick, onCardMove }) {
   return (
     <div className="w-80 flex-shrink-0">
       <div className="bg-gray-200 rounded-xl p-4">
@@ -217,15 +229,6 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
             <Card key={card.id} card={card} onClick={() => onCardClick(card)} />
           ))}
         </ReactSortable>
-
-        {!isFixedColumn && (
-          <button
-            onClick={onAddCard}
-            className="w-full mt-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-300 rounded-lg transition text-left px-2"
-          >
-            + 新增卡片
-          </button>
-        )}
       </div>
     </div>
   )
