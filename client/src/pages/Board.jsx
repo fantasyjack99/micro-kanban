@@ -294,11 +294,13 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
         <ReactSortable
           list={column.cards}
           setList={(newCards) => onCardMove(column.id, newCards)}
-          group={{ name: 'cards', pull: 'true', put: 'true' }}
+          group="cards"
           itemKey="id"
           className="space-y-3 min-h-[100px]"
           ghostClass="opacity-50"
           dragClass="shadow-xl"
+          pull="clone"
+          put="true"
         >
           {column.cards.map((card) => (
             <Card key={card.id} card={card} onClick={() => onCardClick(card)} />
@@ -319,33 +321,28 @@ function Column({ column, onCardClick, onAddCard, onCardMove }) {
 function Card({ card, onClick }) {
   const isOverdue = card.dueDate && card.status !== 'done' && isPast(new Date(card.dueDate))
   const isDone = card.status === 'done'
+  const cardBgColor = card.color || '#FFFFFF'
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-lg p-3 shadow cursor-pointer hover:shadow-md transition ${
+      className={`rounded-lg p-3 shadow cursor-pointer hover:shadow-md transition ${
         isOverdue ? 'border-l-4 border-red-500' : ''
       } ${isDone ? 'opacity-75' : ''}`}
+      style={{ backgroundColor: cardBgColor }}
     >
-      {card.color && (
-        <div
-          className="w-full h-1 rounded mb-2"
-          style={{ backgroundColor: card.color }}
-        />
-      )}
-      
       {card.categoryTag && (
-        <span className="inline-block px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600 mb-2">
+        <span className="inline-block px-2 py-0.5 bg-white bg-opacity-60 rounded text-xs text-gray-700 mb-2">
           {card.categoryTag}
         </span>
       )}
       
-      <p className={`text-gray-800 font-medium ${isDone ? 'line-through text-gray-400' : ''}`}>
+      <p className={`font-medium ${isDone ? 'line-through text-gray-500' : 'text-gray-900'}`}>
         {card.title}
       </p>
       
       {card.content && (
-        <p className={`text-gray-500 text-sm mt-1 line-clamp-2 ${isDone ? 'line-through' : ''}`}>
+        <p className={`text-sm mt-1 line-clamp-2 ${isDone ? 'line-through text-gray-400' : 'text-gray-700'}`}>
           {card.content}
         </p>
       )}
@@ -467,24 +464,27 @@ function CardModal({ card, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 font-medium mb-2">分類標籤</label>
-              <input
-                type="text"
+              <select
                 value={categoryTag}
                 onChange={(e) => setCategoryTag(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="例如：緊急"
-              />
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">無</option>
+                <option value="一般">一般</option>
+                <option value="重要">重要</option>
+                <option value="緊急">緊急</option>
+              </select>
             </div>
 
             <div>
               <label className="block text-gray-700 font-medium mb-2">顏色</label>
               <div className="flex gap-2">
-                {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'].map((c) => (
+                {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#FFFFFF'].map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setColor(c)}
-                    className={`w-8 h-8 rounded-full ${color === c ? 'ring-2 ring-offset-2 ring-gray-400' : ''}`}
+                    className={`w-8 h-8 rounded-full ${color === c ? 'ring-2 ring-offset-2 ring-gray-400' : ''} ${c === '#FFFFFF' ? 'border border-gray-300' : ''}`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
