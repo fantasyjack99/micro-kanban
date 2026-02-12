@@ -60,17 +60,42 @@ router.put('/:id', auth, async (req, res) => {
       where: {
         id: req.params.id,
         column: { board: { userId: req.user.userId } }
-      }
+      },
+      include: { column: true }
     });
 
     if (!card) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
+    // 狀態對應欄位名稱
+    const statusToColumnTitle = {
+      'todo': '待辦',
+      'doing': '執行中',
+      'done': '已完成'
+    }
+
+    const newStatus = req.body.status
+    const targetColumnTitle = statusToColumnTitle[newStatus]
+
+    // 如果狀態改變，找到對應的欄位
+    let targetColumnId = card.columnId
+    if (newStatus !== card.status && targetColumnTitle) {
+      const targetColumn = await req.prisma.column.findFirst({
+        where: {
+          boardId: card.column.boardId,
+          title: targetColumnTitle
+        }
+      })
+      if (targetColumn) {
+        targetColumnId = targetColumn.id
+      }
+    }
+
     // Set completedAt when status changes to done
-    const completedAt = req.body.status === 'done' 
+    const completedAt = newStatus === 'done' 
       ? new Date() 
-      : (card.status === 'done' ? card.completedAt : null);
+      : (newStatus === 'done' ? card.completedAt : null)
 
     const updatedCard = await req.prisma.card.update({
       where: { id: req.params.id },
@@ -79,9 +104,10 @@ router.put('/:id', auth, async (req, res) => {
         content: req.body.content,
         categoryTag: req.body.categoryTag,
         color: req.body.color,
-        status: req.body.status,
+        status: newStatus,
         dueDate: req.body.dueDate,
-        completedAt
+        completedAt,
+        columnId: targetColumnId
       },
       include: { column: true }
     });
